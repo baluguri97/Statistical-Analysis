@@ -1,0 +1,133 @@
+Libname labs'/home/u62422833/CLH244/Labs';
+run;
+proc import datafile = "/home/u62422833/CLH244/Labs/UCI.csv"
+out = labs.UCI
+replace
+dbms = csv;
+getnames = yes;
+run;
+PROC CONTENTS DATA=project; RUN;
+Proc format;
+value breastformat 1 = "left" 
+                       2 = "right";
+value menopauseformat 1 = "premeno" 
+                       2 = "ge40" 
+                        3 = "lt40"; 
+value classformat 1 = "norecurrenceevents" 
+                     2 = "recurrenceevents";
+value irradiateformat 1 = "no" 
+                       2 = "yes";
+run;
+/*1*/
+data project;
+set labs.UCI;
+PROC freq DATA=project;
+table age; run;
+PROC UNIVARIATE DATA=project NORMAL PLOT ;
+VAR age;
+RUN;
+ /*2*/ 
+Proc format;
+invalue breasts "left"= 1
+"right"= 2;
+quit;
+data project;
+set project;
+breast1=input(breast,breasts.);
+format breast1 breasts.;
+drop breast;
+rename breast1=breast;
+PROC UNIVARIATE DATA=project NORMAL PLOT ;
+VAR breast;
+RUN;
+/*3*/
+Proc format;
+invalue Classs "norecurrenceevents"= 1
+"recurrenceevents"= 2;
+quit;
+data project;
+set labs.UCI;
+class1=input(class,classs.);
+format class1 classs.;
+drop class;
+rename class1=class;
+PROC Univariate DATA=project NORMAL PLOT;
+var class;
+RUN;
+/*4*/
+data project; 
+set labs.UCI;
+PROC freq DATA=project;
+table degrees_of_malignancy; run;
+PROC UNIVARIATE DATA=project NORMAL PLOT ;
+VAR degrees_of_malignancy;
+RUN;
+/*bivariate1*/
+DATA project; 
+set labs.UCI; 
+if age = 25 then age = .; 
+RUN;
+proc means data= project mean std;
+class age;
+var degrees_of_malignancy;
+run;
+proc freq data=project;
+tables age* degrees_of_malignancy /chisq riskdiff(equal var=null cl=wald);
+title 'Risk difference of age by degrees_of_malignancy ';
+run;
+PROC SGPLOT data=project;  
+vbar age/group=degrees_of_malignancy;
+title 'age by degrees_of_malignancy '; 
+RUN;
+
+/*bivariate2*/
+proc means data= project mean std;
+class degrees_of_malignancy;
+var breast;
+run;
+proc freq data=project;
+tables degrees_of_malignancy*breast/chisq riskdiff(equal var=null cl=wald);
+title 'Risk difference of degrees_of_malignancy by breast';
+run;
+PROC SGPLOT data=project;  
+vbar breast/group=degrees_of_malignancy;
+title 'Degrees of malignancy by breast'; 
+RUN;
+
+/*bivariate3*/
+DATA project; 
+set labs.UCI; 
+if age = 25 then age = .; 
+RUN;
+proc means data= project mean std;
+class degrees_of_malignancy;
+var class;
+run;
+proc freq data=project;
+tables degrees_of_malignancy*class/chisq riskdiff(equal var=null cl=wald);
+title 'Risk difference of degrees_of_malignancy by breast';
+run;
+/*hypothesis*/
+proc means data= project mean std;
+class degrees_of_malignancy;
+var age;
+run;
+/* Replace age = "age" with 25 years = "missing"*/ 
+DATA project; 
+set labs.UCI; 
+if age = 25 then age = .; 
+RUN; 
+ PROC FREQ data = project;  
+tables age* degrees_of_malignancy /chisq; 
+title 'age by degrees_of_malignancy' with Chi-Square Test of Independence';  
+RUN;
+
+ /*logistic regression*/
+DATA project; 
+set labs.UCI;  
+RUN; 
+proc logistic data = project desc;
+class age(ref='25') breast(ref='left') class(ref='norecurrenceevents') / param=reference;
+model  age= degrees_of_malignancy breast class;
+oddsratio age/at (age = "1 2 3");
+run;
